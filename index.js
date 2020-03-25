@@ -1,11 +1,10 @@
 #!/usr/bin/env node
 "use strict";
 const green = require("chalk").green
-const utils = require("./utils")
 const inquirer = require("inquirer")
 
-import * as api from './apiClient'
 import mixCoins from './mixer'
+import * as utils from './utils'
 
 import { isNil } from 'lodash'
 

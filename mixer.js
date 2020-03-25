@@ -1,68 +1,96 @@
 
-import utils from './utils'
+import * as utils from './utils'
 import * as api from './apiClient'
 
 import { isNil, isEmpty } from 'lodash'
 
 import { Observable } from 'rxjs';
 
-const MIXER_TIMEOUT = 10000;
+const MIXER_TIMEOUT = 30000;
 const MIXER_INTERVAL = 1000;
 
-const BANK_ACCOUNT = 'THE_BANK';
+const HOUSE_ADDRESS = 'THE_HOUSE';
 
 const mixCoins = async (depositAddress, outAddresses) => {
     if (isNil(depositAddress) || isEmpty(outAddresses)) {
       return;
     }
-
-    const depAddrInfo = await api.infoForAddress(depositAddress) || []
-    const depAddrTransactions = depAddrInfo.transactions || []
+    
+    const depAddrTransactions = await api.transactionsForAddress(depositAddress) || []
     const observable = new Observable(subscriber => {
-      let elasped = 0;
+      let elapsed = 0;
       const interval = setInterval(async () => {
-
-        subscriber.next('Checking deposit address');
         
-        
-        const depAddrCurrentInfo = await api.infoForAddress(depositAddress) || []
+        const depAddrCurrentInfo = await api.infoForAddress(depositAddress) || {}
         const depAddrCurrentTransactions = depAddrCurrentInfo.transactions || []
 
         if(!isEmpty(depAddrCurrentTransactions) && depAddrCurrentTransactions.length > depAddrTransactions.length){
           subscriber.next('Deposit Address Received Coins!');
-          
-          await disburseCoins(depositAddress, outAddresses);
+          await api.transfer(depositAddress, HOUSE_ADDRESS, depAddrCurrentInfo.balance)
+          await disburseCoins(outAddresses, depAddrCurrentInfo.balance);
+
           clearInterval(interval);
           subscriber.complete();
         }
 
-        elasped += MIXER_INTERVAL
-        if (elasped >= MIXER_TIMEOUT) {
-          clearInterval(interval);
-        } else {
-          subscriber.next(`${elasped} Elapsed!`);
-        }
-      }, MIXER_INTERVAL);
+        if(elapsed > MIXER_TIMEOUT){
+          subscriber.next('Timeout occurred');
 
-      subscriber.next('Mixing Complete!');
-      subscriber.complete();
+          clearInterval(interval)
+          subscriber.complete()
+        }
+
+        elapsed += MIXER_INTERVAL
+        subscriber.next(`${elapsed} elapsed`);
+      }, MIXER_INTERVAL);
     })
 
     const subscription = observable.subscribe({
-      next(x) { console.log('got value ' + x); },
+      next(x) { 
+        // console.log('got value ' + x); 
+      },
       error(err) { console.error('something wrong occurred: ' + err); },
       complete() {
         console.log('done');
+        subscription.unsubscribe();
       }
     });
-
-    setTimeout(() => {
-      subscription.unsubscribe();
-    }, MIXER_TIMEOUT);    
 }
 
-const disburseCoins = (depositAddress, outAddresses) => {
+const disburseCoins = async (outAddresses, amount) => {
+  if(amount <= 0){
+    return
+  }
 
+  const disbursements = outAddresses.map(address => {
+    return {
+      address,
+      amount: 0,
+    }
+  })
+
+  console.log('preparing disbursement amounts')
+  let remainingToDisburse = amount
+  while(remainingToDisburse > 0) {
+    const idx = utils.randomInteger(0, disbursements.length - 1);
+    disbursements[idx].amount += 1
+    remainingToDisburse -= 1
+  }
+
+  console.log('Prepared the following: ')
+  console.log(disbursements)
+
+  const houseAddrInfo = await api.infoForAddress(HOUSE_ADDRESS) || {}
+  const houseAddrBalance = houseAddrInfo.balance || 0
+  if(houseAddrBalance < amount){
+    return;
+  }
+
+  for (const disbursement of disbursements) {
+    if (disbursement.amount > 0) {
+      await api.transfer(HOUSE_ADDRESS, disbursement.address, disbursement.amount)
+    }
+  }
 }
 
 export default mixCoins;

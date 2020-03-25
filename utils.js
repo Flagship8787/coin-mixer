@@ -1,15 +1,13 @@
-#!/usr/bin/env node
-"use strict";
-const crypto = require("crypto");
+import crypto from 'crypto'
 
-const utils = {
-  generateDepositAddress() {
-    const hash = crypto.createHash("sha256");
-    return hash
-      .update(`${Date.now()}`)
-      .digest("hex")
-      .substring(0, 8);
-  }
-};
+export const generateDepositAddress = () => {
+  const hash = crypto.createHash("sha256");
+  return hash
+    .update(`${Date.now()}`)
+    .digest("hex")
+    .substring(0, 8);
+}
 
-module.exports = utils;
+export const randomInteger = (min, max) => {
+  return Math.round(Math.random() * (max - min)) + min
+}
