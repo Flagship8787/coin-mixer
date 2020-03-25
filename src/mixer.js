@@ -9,23 +9,23 @@ const MIXER_INTERVAL = 1000
 
 const HOUSE_ADDRESS = 'THE_HOUSE'
 
-
-const mixCoins = (depositAddress, outAddresses) => new Promise(async (resolve, reject) => {
+export default (depositAddress, outAddresses) => new Promise(async (resolve, reject) => {
   if (isNil(depositAddress) || isEmpty(outAddresses)) {
     reject()
   }
   
   const depAddrTransactions = await api.transactionsForAddress(depositAddress) || []
-  let elapsed = 0;
+  let elapsed = 0
   const interval = setInterval(async () => {
     
     const depAddrCurrentInfo = await api.infoForAddress(depositAddress) || {}
     const depAddrCurrentTransactions = depAddrCurrentInfo.transactions || []
 
     if(!isEmpty(depAddrCurrentTransactions) && depAddrCurrentTransactions.length > depAddrTransactions.length){
-      console.log('Deposit Address Received Coins!');
+      console.log('Deposit Address Received Coins!')
+
       await api.transfer(depositAddress, HOUSE_ADDRESS, depAddrCurrentInfo.balance)
-      await disburseCoins(outAddresses, depAddrCurrentInfo.balance);
+      await disburseCoins(outAddresses, depAddrCurrentInfo.balance)
 
       clearInterval(interval)
       resolve()
@@ -38,7 +38,7 @@ const mixCoins = (depositAddress, outAddresses) => new Promise(async (resolve, r
     }
 
     elapsed += MIXER_INTERVAL
-  }, MIXER_INTERVAL);
+  }, MIXER_INTERVAL)
 })
 
 const disburseCoins = async (outAddresses, amount) => {
@@ -54,9 +54,10 @@ const disburseCoins = async (outAddresses, amount) => {
   })
 
   console.log('preparing disbursement amounts')
+
   let remainingToDisburse = amount
   while(remainingToDisburse > 0) {
-    const idx = utils.randomInteger(0, disbursements.length - 1);
+    const idx = utils.randomInteger(0, disbursements.length - 1)
     disbursements[idx].amount += 1
     remainingToDisburse -= 1
   }
@@ -68,7 +69,7 @@ const disburseCoins = async (outAddresses, amount) => {
   const houseAddrBalance = houseAddrInfo.balance ? parseInt(houseAddrInfo.balance) : 0
   if(houseAddrBalance < amount){
     console.log('House is BROKE!  Cannot make disbursements')
-    return;
+    return
   }
 
   for (const disbursement of disbursements) {
@@ -77,7 +78,5 @@ const disburseCoins = async (outAddresses, amount) => {
     }
   }
 }
-
-export default mixCoins;
 
 
